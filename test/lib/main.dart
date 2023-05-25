@@ -1,66 +1,97 @@
 import 'package:flutter/material.dart';
-import 'package:test/widgets/button.dart';
+import 'package:http/http.dart' as http;
+import 'dart:async';
+import 'dart:convert';
 
-class Player {
-  String? name;
+Future<Info> fetchInfo() async {
+  var url = 'https://api.mockaroo.com/api/5ee43e50?count=1&key=6213f2b0';
+  final response = await http.get(Uri.parse(url));
 
-  Player({required this.name});
+  if (response.statusCode == 200) {
+    //만약 서버가 ok응답을 반환하면, json을 파싱합니다
+    print('응답했다');
+    print(json.decode(response.body));
+    return Info.fromJson(json.decode(response.body));
+  } else {
+    //만약 응답이 ok가 아니면 에러를 던집니다.
+    throw Exception('계좌정보를 불러오는데 실패했습니다');
+  }
 }
 
-void main() {
-  var gunal = Player(name: "gunal");
-  gunal.name;
-  runApp(const App());
+class Info {
+  final int id;
+  final String userName;
+  final int account;
+  final int balance;
+
+  Info(
+      {required this.id,
+      required this.userName,
+      required this.account,
+      required this.balance});
+
+  factory Info.fromJson(Map<String, dynamic> json) {
+    return Info(
+      id: json["id"],
+      userName: json["userName"],
+      account: json["account"],
+      balance: json["balance"],
+    );
+  }
 }
 
-class App extends StatelessWidget {
-  const App({super.key});
+class InfoPage extends StatefulWidget {
+  const InfoPage({Key? key}) : super(key: key);
+
+  @override
+  State<InfoPage> createState() => _InfoPageState();
+}
+
+class _InfoPageState extends State<InfoPage> {
+  Future<Info>? info;
+
+  @override
+  void initState() {
+    super.initState();
+    info = fetchInfo();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        backgroundColor: Colors.white,
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  height: 60,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "장익준의 동전 인식 프로그램",
-                      style: TextStyle(
-                          color: Colors.blue,
-                          fontSize: 30,
-                          fontStyle: FontStyle.italic),
-                    ),
-                  ],
-                ),
-                SizedBox(
-                  height: 300,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Button(
-                      text: "동전 인식",
-                      bgColor: Colors.blue,
-                      textColor: Colors.white,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+    return Scaffold(
+        appBar: AppBar(
+          title: const Text('info', style: TextStyle(color: Colors.white)),
+          centerTitle: true,
         ),
-      ),
+        body: Center(
+          child: FutureBuilder<Info>(
+            //통신데이터 가져오기
+            future: info,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                return buildColumn(snapshot);
+              } else if (snapshot.hasError) {
+                return Text("${snapshot.error}에러!!");
+              }
+              return const CircularProgressIndicator();
+            },
+          ),
+        ));
+  }
+
+  Widget buildColumn(snapshot) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text('고객번호:${snapshot.data!.id}', style: const TextStyle(fontSize: 20)),
+        Text('고객명:${snapshot.data!.userName}',
+            style: const TextStyle(fontSize: 20)),
+        Text('계좌 아이디:${snapshot.data!.account}',
+            style: const TextStyle(fontSize: 20)),
+        Text('잔액:${snapshot.data!.balance}원',
+            style: const TextStyle(fontSize: 20)),
+      ],
     );
   }
 }
